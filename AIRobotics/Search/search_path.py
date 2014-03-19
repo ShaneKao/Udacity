@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 # -----------
 # User Instructions:
 #
@@ -22,12 +21,17 @@
 
 
 # Sample Test case
-grid = [[0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
-        [0, 0, 1, 0, 1, 0],
-        [0, 0, 1, 0, 1, 0],
-        [0, 0, 1, 0, 1, 0]]
+#grid = [[0, 0, 1, 0, 0, 0],
+#        [0, 0, 0, 0, 0, 0],
+##        [0, 0, 1, 0, 1, 0],
+#        [0, 0, 1, 0, 1, 0],
+#        [0, 0, 1, 0, 1, 0]]
 
+grid = [[0, 0, 1, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0],
+        [0, 0, 1, 0, 1, 0],
+        [0, 0, 1, 0, 1, 0],
+        [0, 0, 0, 0, 1, 0]]
 init = [0, 0]
 goal = [len(grid)-1, len(grid[0])-1]
 
@@ -39,7 +43,6 @@ delta = [[-1, 0 ], # go up
 delta_name = ['^', '<', 'v', '>']
 
 cost = 1
-
 
 # ----------------------------------------
 # modify code below
@@ -56,6 +59,13 @@ def search():
         for j in range(len(grid[i])):
             newrow.append(-1)
         
+        expand.append(newrow)    
+    
+    for i in range(len(grid)):
+        newrow = []
+        for j in range(len(grid[i])):
+            newrow.append(-1)
+        
         costs.append(newrow)
         
 	
@@ -67,7 +77,7 @@ def search():
     costs[x][y] = g
     found = False  # flag that is set when search is complet
     resign = False # flag set if we can't find expand
-
+    ecount = 0
     while not found and not resign:
         if len(open) == 0:
             resign = True
@@ -79,7 +89,8 @@ def search():
             x = next[1]
             y = next[2]
             g = next[0]
-            
+            expand[x][y] = ecount
+            ecount = ecount + 1
             if x == goal[0] and y == goal[1]:
                 found = True
             else:
@@ -102,13 +113,51 @@ def search():
             newrow.append(' ')
         
         steps.append(newrow)
-		
+	
+    steps[goal[0]][goal[1]] = '*'
+    
+    done = False
+    
+    curX = goal[0]
+    curY = goal[1]
+    
+    while not done:
+        neighborCost = []
+        minCost = -1
+        directionIndex = -1
+        bestX = -1
+        bestY = -1
+        
+        for j in range(len(delta)):
+            newX = curX + delta[j][0]
+            newY = curY + delta[j][1]
+            if newX >= 0 and newX < len(grid) and newY >=0 and newY < len(grid[0]):
+                if minCost == -1 or costs[newX][newY] < minCost and costs[newX][newY] != -1:
+                    #print "setting minst " + str(newX) + "-" + str(newY) + " to " + str(costs[newX][newY])
+                    minCost = costs[newX][newY]
+                    directionIndex = j
+                    #print "setting direction index to " + str(j)
+                    bestX = newX
+                    bestY = newY
+                 
+        curX = bestX
+        curY = bestY
+        
+        directionIndex = (directionIndex + 2) % len(delta_name)
+        steps[bestX][bestY] = delta_name[directionIndex]
+        #print "Current is now " + str(curX) + ", " + str(curY)
+        if curX == init[0] and curY == init[1]:
+            
+            done = True
+        
     for i in range(len(steps)):
 		print steps[i]
-		
+	
+    expand = steps
+    return expand
+    #print "****"
     #for i in range(len(expand)):
-    #    print expand[i]
-    return # make sure you return the shortest path.
+        #print expand[i]
 
 
 search()
