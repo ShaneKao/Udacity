@@ -17,8 +17,8 @@
 grid = [[0, 0, 1, 0, 0, 0],
         [0, 0, 1, 0, 0, 0],
         [0, 0, 1, 0, 0, 0],
-        [0, 0, 1, 0, 1, 0],
-        [0, 0, 1, 1, 1, 0],
+        [0, 0, 0, 0, 1, 0],
+        [0, 0, 0, 1, 1, 0],
         [0, 0, 1, 0, 1, 0]]
 
 init = [0, 0]
@@ -44,6 +44,8 @@ def optimum_policy():
     while change:
         change = False
 
+		# set the values of the cells
+		# 
         for x in range(len(grid)):
             for y in range(len(grid[0])):
                 if goal[0] == x and goal[1] == y:
@@ -65,6 +67,9 @@ def optimum_policy():
                                 value[x][y] = v2
     
     policy = value
+    for i in range(len(value)):
+		print value[i]
+		
     for i in range(len(policy)):
         for j in range(len(policy[i])):
             

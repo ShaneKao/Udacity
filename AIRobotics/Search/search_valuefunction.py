@@ -54,8 +54,6 @@ def search(point):
         if [goal[0], goal[1]] in expandedList:
             node = open[len(open)-1]
             thiscost = node[0]
-            #print "Found that thang for point " + str(point[0]) + ", " + str(point[1]) + " cost = " + str(thiscost)
-            #print open
             found = True
             return thiscost
             break
