@@ -48,10 +48,7 @@ grid = [[0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 1, 1, 0]]
-
-#grid = [[0, 1, 0],
-#        [0, 0, 0]]
-#		
+   
 goal = [0, len(grid[0])-1] # Goal is in top right corner
 
 
@@ -62,9 +59,9 @@ delta = [[-1, 0 ], # go up
 
 delta_name = ['^', '<', 'v', '>'] # Use these when creating your policy grid.
 
-success_prob = 1.0                     
+success_prob = 1.0                      
 failure_prob = (1.0 - success_prob)/2.0 # Probability(stepping left) = prob(stepping right) = failure_prob
-collision_cost = 100                    
+collision_cost = 1000                    
 cost_step = 1        
                      
 
@@ -99,108 +96,66 @@ def isValid(point, visited=[]):
 
 	return True
 		
-def isCollision(r, c):
-	r = point[0]
-	c = point[1]
-	if r < 0 or r >= len(grid):
-		#print "OOB " + str(r) + ", " + str(c)
-		return True
-	if c < 0 or c >=len(grid[0]):
-		#print "OOB" + str(r) + ", " + str(c)
-		return True
-	
-	if grid[r][c] == 1:
-		return True;
-		
-	return False
-	
+
 def addNeighbors(point, open, visited):
 	g = point[0]
 	r = point[1] 
 	c = point[2]
 
 	for i in range(len(delta)):
+		# for each direction, find forward, left and right.
+		
 		r2 = r + delta[i][0]
-		c2 = c + delta[i][1]
-		if isValid([r2, c2], visited):
-			newcost = (cost_step + g) *  success_prob
-			open.append([(g+cost_step), r2, c2])
-			visited.append([r,c])
-
-def isValidCell(r, c):
-	if r < 0 or r >= len(grid):
-		#print "OOB " + str(r) + ", " + str(c)
-		return False
-	if c < 0 or c >=len(grid[0]):
-		#print "OOB" + str(r) + ", " + str(c)
-		return False
+		c2 = r + delta[1][1]
+		newCost = g + ( success_prob * 
 		
-	if grid[r][c] == 1:
-		#print "blocked"
-		return False
-
-	return True
-	
-
-def search( value):
-	
-	value[goal[0]][goal[1]] = 0
-	updatedValues = value
-	for a in range(len(grid)):
-		for b in range(len(grid[a])):
-			#print "****** New point " + str(a) + ", " + str(b)
-			r = a
-			c = b
-			if goal[0] == r and goal[1] == c:
-				updatedValues[r][c] = 0
-				continue
+		
+		
+		#if isValid([r2, c2], visited):
+		#	open.append([(g+cost_step), r2, c2])
+		#	visited.append([r,c])
+		
 			
-			if grid[r][c] == 1:
-				#print "val was 1 for " + str(a) + ", " + str(b)
-				updatedValues[r][c] = collision_cost
-				continue
-				
-			for i in range(4):
-				#print "checking delta for direction " + delta_name[i] + " for point " + str(a) + ", " + str(b)
-				# checking forward
-				r2 = r + delta[i][0]
-				c2 = r + delta[i][1]
-				newcost = value[r][c]
-				if isValidCell(r2, c2):
-					newcost = newcost + ( .5 * value[r2][c2])
-				else:
-					newcost = newcost + (.5 * collision_cost )
-					
-				# checking left
-				newIndex = (i + 1) % len(delta)
-				#print"new index is " + str(newIndex)
-				r2 = r + delta[newIndex][0]
-				c2 = r + delta[newIndex][1]
-				if isValidCell(r2, c2):
-					newcost = newcost + ( .25 * value[r2][c2])
-				else:
-					newcost = newcost + ( .25 * collision_cost)
-					
-				#print "left cell is " + str(r2) + ", " + str(c2)
-				
-				# checking right
-				newIndex = (i - 1) % len(delta)
-				#print"new index is " + str(newIndex)
-				r2 = r + delta[newIndex][0]
-				c2 = r + delta[newIndex][1]
-				if isValidCell(r2, c2):
-					newcost = newcost + ( .25 * value[r2][c2])
-				else:
-					newcost = newcost + ( .25 * collision_cost)
-		
-				#print "right cell is " + str(r2) + ", " + str(c2)
-				#print "newcost = " + str(newcost) + " for point " + str(a) + ", " + str(b)
-
-				if newcost < value[r][c] or value[r][c] == 0:
-					updatedValues[r][c] = newcost
-					
-	value = updatedValues		
+def search(point, value):
+	oldpoint = point
+	init = point
+	open = []
+	visited = []
+	open.append([0, point[0], point[1]])
+	keepLooping = True
 	
+	if grid[point[0]][point[1]] == 1:
+		return 1000
+		
+	while keepLooping == True:
+		#print "***********************************"
+		#print "Open len is " + str(len(open))
+		if len(open) == 0:
+			print "Empty"
+			return 1000
+			break
+		
+		
+		open.sort()
+		open.reverse()
+		#print "*** before sort"
+		#print open
+		p = open.pop()
+		#print "***** after pop"
+		#print open
+		g = p[0]
+		r = p[1]
+		c = p[2]
+		
+		if r == goal[0] and c == goal[1]:
+			#print "GOAAAAL for point " + str(oldpoint[0]) + ", " + str(oldpoint[1]) + str(g)
+			keepLooping = False
+			return g
+		else:
+			addNeighbors(p, open, visited)
+			#print "*** after neightbors"
+			#print open
+			
 def findStep(point, values):
 	r = point[0] 
 	c = point[1]
@@ -227,10 +182,36 @@ def findStep(point, values):
 	#print "Low index is " + str(lowindex)
 	return delta_name[lowindex]
 
+#def findUpdatedStep(r, c values):
+#	r = point[0] 
+#	c = point[1]
+#	lowindex = 70
+#	lowvalue = 9999
+#	if grid[point[0]][point[1]] == 1:
+#		return ' '
+#	
+#	if point[0] == goal[0] and point[1] == goal[1]:
+#		return "*"
+#		
+#	for i in range(len(delta)):
+#		r2 = r + delta[i][0]
+#		c2 = c + delta[i][1]
+#		if not isValid([r2, c2]):
+#			continue
+#			
+#		if values[r2][c2] < lowvalue:
+#			#print "Value " + str(values[r2][c2]) + " was lower on spot " + str(r2) + ", " + str(c2)
+#
+#			lowvalue = values[r2][c2]
+#			lowindex = i
+#	
+#	#print "Low index is " + str(lowindex)
+#	return delta_name[lowindex]
 	
 def updateValues(r, c, policy, values):
 	dir = policy[r][c]
-	
+	#print "*******"
+	#print "point " + str(r) + ", " + str(c)
 	if values[r][c] == 0:
 		#print "value is 0 returning 0"
 		return 0
@@ -282,18 +263,35 @@ def stochastic_value():
 	value = [[1000 for row in range(len(grid[0]))] for col in range(len(grid))]
 	policy = [[' ' for row in range(len(grid[0]))] for col in range(len(grid))]
 	#value[3][1] = search([3,1], value)
+
 	for i in range(len(grid)):
 		for j in range(len(grid[i])):
-			if grid[i][j] == 0:
-				value[i][j] = 0
+			value[i][j] = search([i,j], value)
 			
-	for i in range(3):
-		search( value)
+	#for i in range(len(grid)):
+	#	for j in range(len(grid)):
+	#		policy[i][j] = findStep([i, j], value)
 	
-	for i in range(len(grid)):
-		for j in range(len(grid[i])):
-			policy[i][j] = findStep([i, j], value)
-			
+	thesevalues = []
+	#for n in range(1):
+	#	thesevalues = value
+	#	for i in range(len(grid)):
+	#		for j in range(len(grid[i])):
+	#			value[i][j] = updateValues(i, j, policy, thesevalues )
+	#	
+	#	print "finding next step for 1,3"
+	#	val = findStep([1, 3], value)
+	#	print "value is " + str(val)
+	#	#for i in range(len(grid)):
+	#	#	for j in range(len(grid)):
+	#	#		policy[i][j] = findStep([i, j], value)
+	#	#
+	#	#print "\n\n**** updated policy ****"
+	#	#for i in range(len(policy)):
+	#	#	print policy[i]
+	#	#
+	#	#print "*********"
+	#value = thesevalues
 	return value, policy
 
 #search([0,0], value]
