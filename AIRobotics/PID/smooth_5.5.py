@@ -57,11 +57,14 @@ def smooth(path, weight_data = 0.5, weight_smooth = 0.1):
 	newpath[len(path)-1] = path[len(path) - 1]
 	#print newpath
 	
-	delta = 500
-	for r in range(15):
-	#while delta > .0005:
+	delta = tolerance
+	#for r in range(15):
+	while delta >= tolerance:
+		delta = 0
 		#print "using r=" + str(r) + " path is " + str(len(path))
 		for i in range(1, (len(path) - 1)):
+			auxx = newpath[i][0]
+			auxy = newpath[i][1]
 			#print "Smoothing for point " + str(path[i][0]) + ", " + str(path[i][1]) + " max delta = " + str(delta)
 			x1 = newpath[i][0] + (weight_data * (path[i][0] - newpath[i][0]))
 			#print "updated x1 to " + str(x1)
@@ -79,11 +82,14 @@ def smooth(path, weight_data = 0.5, weight_smooth = 0.1):
 			y2 = y1 + (weight_smooth * ( newpath[i+1][1] + newpath[i-1][1] - 2 * y1 ))
 			##print "updated x2 to " + str(x2)
 			newpath[i][1] = y2
-
+			
+			delta += abs(auxx - x2)
+			delta += abs(auxy - y2)
 	
 	
 	return newpath # Leave this line for the grader!
 
+tolerance = .00001
 # feel free to leave this and the following lines if you want to print.
 newpath = smooth(path)
 
