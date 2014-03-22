@@ -173,29 +173,44 @@ def twiddle(tol = 0.2): #Make this tolerance bigger if you are timing out!
     dp = [1, 1, 1]
 	
     besterr = run(p)
+    iterationcount = 0
     while besterr > tol:
-        print "iteratio1n"
+        #print "iteratio1n"
         newerror = 0
-		
+        iterationcount += 1
+        #print "iteration " + str(iterationcount)
+        error = 0
         for i in range(len(p)):
             p[i] += dp[i]
             error = run(p)
-            print " error is " + str(error)
             if error < besterr:
-                besterr = error
-				print "updating best err"
-                dp[i] = dp[i] *1.1
+				besterr = error
+				#print "updating ing best err"
+				dp[i] = dp[i] *1.1
             else:
-                p[i] -= 2*dp[i]
-                dp[i] *= .9
-    
-
-    return run(p)
-
-
-
-
-
-
+				p[i] -= 2.0*dp[i]
+				
+				error = run(p)
+				
+				
+				if error < besterr:
+					besterr = error
+					dp[i] = dp[i] * 1.1
+				else:
+					p[i] += dp[i]
+					dp[i] *= .9
 	
-print twiddle(.1)
+            #print "error " + str(error)
+    return p
+
+
+
+
+
+
+#print run([1,1,0])	
+ps = twiddle(.00000000000001)
+print ps
+
+print run(ps)
+
