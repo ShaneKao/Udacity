@@ -174,15 +174,18 @@ def twiddle(tol = 0.2): #Make this tolerance bigger if you are timing out!
 	
     besterr = run(p)
     iterationcount = 0
-    while besterr > tol:
+    while sum(dp) > tol:
         #print "iteratio1n"
         newerror = 0
         iterationcount += 1
         #print "iteration " + str(iterationcount)
         error = 0
+
+		
         for i in range(len(p)):
             p[i] += dp[i]
             error = run(p)
+			
             if error < besterr:
 				besterr = error
 				#print "updating ing best err"
@@ -191,15 +194,14 @@ def twiddle(tol = 0.2): #Make this tolerance bigger if you are timing out!
 				p[i] -= 2.0*dp[i]
 				
 				error = run(p)
-				
-				
+					
 				if error < besterr:
 					besterr = error
 					dp[i] = dp[i] * 1.1
 				else:
 					p[i] += dp[i]
 					dp[i] *= .9
-	
+			
             #print "error " + str(error)
     return p
 
