@@ -189,13 +189,11 @@ class robot:
 		elif self.x > radius and self.x <= 3*radius:
 			ypos = self.y
 			xpos = self.x
-			#print "Other"
 			cte = self.y - (2*radius)
 		
 			if self.y <= radius:
 				cte=-self.y
 			
-			#print "cte is " + str(cte)
 		elif self.x > 3* radius:
 			# opposite of the other guy
 			angle = 0
