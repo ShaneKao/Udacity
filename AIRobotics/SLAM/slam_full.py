@@ -521,13 +521,15 @@ def slam(data, N, num_landmarks, motion_noise, measurement_noise):
  	
 	OmegaX = matrix()
 	OmegaX.zero(N+num_landmarks, N+num_landmarks)
-
-	movement = 1
+	OmegaX.value[0][0] = 1.0
+	
 
 
 	# movement updates
-	for i in range(N-1):
-		thisdata = data[i]
+	for movement in range(N-1):
+		n = movement + 1
+		
+		thisdata = data[movement]
 		moved = thisdata[1]
 		
 		dx = moved[0]
@@ -536,34 +538,29 @@ def slam(data, N, num_landmarks, motion_noise, measurement_noise):
 		
 		for j in range(len(landmarks)):
 			lindex = landmarks[j][0]
-			
 			#print "adding " + str(landmarks[j][1])
-			
-			muX.value[movement][0] += landmarks[j][1] / measurement_noise
-			muX.value[N+lindex][0] += -landmarks[j][1] / measurement_noise
-			
-			OmegaX.value[movement][movement] += 1.0 / measurement_noise
+			muX.value[n][0] += -landmarks[j][1] / measurement_noise
+			muX.value[N+lindex][0] += landmarks[j][1] / measurement_noise
+			OmegaX.value[n][n] += 1.0 / measurement_noise
 			OmegaX.value[N+lindex][N+lindex] += 1.0 / measurement_noise
-			OmegaX.value[N+lindex][movement] += -1.0 / measurement_noise
-			OmegaX.value[movement][N+lindex] += -1.0 / measurement_noise
+			OmegaX.value[N+lindex][n] += -1.0 / measurement_noise
+			OmegaX.value[n][N+lindex] += -1.0 / measurement_noise
 
 			
 		
-		
-		OmegaX.value[movement][movement-1] +=  -1.0/motion_noise
-		OmegaX.value[movement-1][movement] +=  -1.0/motion_noise
-		OmegaX.value[movement][movement] += 1.0 / motion_noise
-		OmegaX.value[movement-1][movement-1] += 1.0 / motion_noise
-		
-		muX.value[movement-1][0] -= dx
-		muX.value[movement][0] += dx
+		OmegaX.value[n][n] += 1.0 / motion_noise
+		OmegaX.value[n+1][n+1] += 1.0 / motion_noise
 
-		movement += 1
+		OmegaX.value[n][n+1] +=  -1.0/motion_noise
+		OmegaX.value[n+1][n] +=  -1.0/motion_noise
+		
+		muX.value[n][0] -= dx / motion_noise
+		muX.value[n+1][0] += dx / motion_noise
+
 		# do the measurements now
 
 	
-	OmegaX.show()
-	muX.show()
+
 	mux = OmegaX.inverse() * muX
 	print "****"
 	mux.show()
