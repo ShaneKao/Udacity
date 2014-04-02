@@ -515,20 +515,25 @@ def slam(data, N, num_landmarks, motion_noise, measurement_noise):
 	muX = matrix()
 	muY = matrix()
 	
-	#muX.zero(N,1)
+	muY.zero(N+num_landmarks,1)
 	muX.zero(N+num_landmarks,1)
 	muX.value[0][0] = 49.999
- 	
+ 	muY.value[0][0] = 49.99
+	
 	OmegaX = matrix()
+	OmegaY = matrix()
+	
 	OmegaX.zero(N+num_landmarks, N+num_landmarks)
 	OmegaX.value[0][0] = 1.0
 	
+	OmegaY.zero(N+num_landmarks, N+num_landmarks)
+	OmegaY.value[0][0] = 1.0
 
 
 	# movement updates
 	for movement in range(N-1):
-		n = movement + 1
-		
+		#n = movement + 1
+		n = movement
 		thisdata = data[movement]
 		moved = thisdata[1]
 		
@@ -546,7 +551,12 @@ def slam(data, N, num_landmarks, motion_noise, measurement_noise):
 			OmegaX.value[N+lindex][n] += -1.0 / measurement_noise
 			OmegaX.value[n][N+lindex] += -1.0 / measurement_noise
 
-			
+			muY.value[n][0] += -landmarks[j][2] / measurement_noise
+			muY.value[N+lindex][0] += landmarks[j][2] / measurement_noise
+			OmegaY.value[n][n] += 1.0 / measurement_noise
+			OmegaY.value[N+lindex][N+lindex] += 1.0 / measurement_noise
+			OmegaY.value[N+lindex][n] += -1.0 / measurement_noise
+			OmegaY.value[n][N+lindex] += -1.0 / measurement_noise
 		
 		OmegaX.value[n][n] += 1.0 / motion_noise
 		OmegaX.value[n+1][n+1] += 1.0 / motion_noise
@@ -557,14 +567,35 @@ def slam(data, N, num_landmarks, motion_noise, measurement_noise):
 		muX.value[n][0] -= dx / motion_noise
 		muX.value[n+1][0] += dx / motion_noise
 
+		#Y
+		OmegaY.value[n][n] += 1.0 / motion_noise
+		OmegaY.value[n+1][n+1] += 1.0 / motion_noise
+
+		OmegaY.value[n][n+1] +=  -1.0/motion_noise
+		OmegaY.value[n+1][n] +=  -1.0/motion_noise
+		
+		muY.value[n][0] -= dy / motion_noise
+		muY.value[n+1][0] += dy / motion_noise
+		
 		# do the measurements now
 
 	
 
 	mux = OmegaX.inverse() * muX
-	print "****"
-	mux.show()
-	mu = mux
+	muy = OmegaY.inverse() * muY
+	#OmegaX.show()
+	#print "****"
+	#mux.show()
+	#print "yyy"
+	#muy.show()
+	mu = matrix()
+	mu.zero( 2 * ( N + num_landmarks), 1)
+	for i in range(N+num_landmarks):
+		n = i * 2
+		mu.value[n][0] = mux.value[i][0]
+		mu.value[n+1][0] = muy.value[i][0]
+		#print "adding " + str(mux.value[i][0]) + " for iteration " + str(i)
+		
 	return mu # Make sure you return mu for grading!
         
 ############### ENTER YOUR CODE ABOVE HERE ###################
@@ -667,7 +698,7 @@ test_data2 = [[[[0, 26.543274387283322, -6.262538160312672], [3, 9.9373968257997
 ### Uncomment the following three lines for test case 1 ###
 
 result = slam(test_data1, 20, 5, 2.0, 2.0)
-#print_result(20, 5, result)
+print_result(20, 5, result)
 
 
 ### Uncomment the following three lines for test case 2 ###
