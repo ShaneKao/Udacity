@@ -22,6 +22,8 @@ class robot:
         self.distance_noise    = 0.0
         self.measurement_noise = 0.0
 
+	def getHeading():
+		return self.heading
 		
     def set_noise(self, new_t_noise, new_d_noise, new_m_noise):
         """This lets us change the noise parameters, which can be very
@@ -44,7 +46,6 @@ class robot:
         distance = max(0.0, distance)
 
         # Execute motion
-        #print "robot x is " + str(self.x)
         self.heading += turning
         self.heading = angle_trunc(self.heading)
         self.x += distance * cos(self.heading)

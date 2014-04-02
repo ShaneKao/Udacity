@@ -40,7 +40,7 @@ import random
 # next position. The OTHER variable that your function returns will be 
 # passed back to your function the next time it is called. You can use
 # this to keep track of important information over time.
-def getWeight(distance):
+def getWeight():
 	prob = 1.0
 	#print "actual moved is " + str(actualmoved) + " and robot moved is " + str(robotmoved)
 	#if abs(actualmoved - robotmoved ) < 10:
@@ -70,6 +70,7 @@ def better(thelist, samples, wmax):
 			
 			
 def estimate_next_pos(measurement, OTHER = None):
+
 	p = []
 	dx = 0
 	dy = 0
@@ -81,6 +82,10 @@ def estimate_next_pos(measurement, OTHER = None):
 	lastPosition = [0,0]
 	lastHeading = 0
 	initialized = False
+
+	newp = []
+
+			
 	if OTHER == None:
 	
 		maxWeight = -1
@@ -95,89 +100,126 @@ def estimate_next_pos(measurement, OTHER = None):
 			p.append(myRobot)
 		
 		
-	
-		#print "windex = " + str(wIndex)
+		closestPoint = 100
+		closestIndex = -1
 		
-		closestPos = p[wIndex].sense()
+		# get closest point and use as the first prediction
+		for i in range(len(p)):
+			pos = p[i].sense()
+			d1 = distance_between(measurement, pos)
+			if d1 < closestPoint:
+				closestPoint = d1
+				closestIndex = -1
+				
+		closestPos = p[closestIndex].sense()
 		
 		OTHER = [measurement, heading,  p]
 		fpos = closestPos
 		print "First measurement " + str(measurement[0]) + ", " + str(measurement[1])
-		#for i in range(len(p)):
-		#	print "Pos is " + str(p[i].x) + ", " + str(p[i].y) + " weight will be " + str(getWeight( distance_between(measurement, p[i].sense()))) + " with distance " + str(distance_between(measurement, p[i].sense()))
-	
-		#return [fpos,  OTHER ]
+		print "First guess is " + str(fpos[0]) + ", " + str(fpos[1])
+		print "*******************************************************"
+
+		return closestPos, OTHER
 		
 	else:
+	
 		initialized = True
 		lastPosition, lastHeading, p = OTHER
 		print "MEAS: " + str(lastPosition[0]) + ", " + str(lastPosition[1]) + "  this measurement " + str(measurement[0]) + ", "  + str(measurement[1])
-
 		v = distance_between(lastPosition, measurement)
 		dy = measurement[1] - lastPosition[1]
 		dx = measurement[0] - lastPosition[0]
-		heading = atan(dy/dx) 
-		turning = ( heading - lastHeading ) % (2 * pi)
-		heading = heading % 2*pi
-		
-		
-		
-		for i in range(N):
-			
-			p[i] = robot(p[i].sense()[0], p[i].sense()[1], heading, 0)
-			p[i].set_noise(0.0, 0.0, measurement_noise)
-			p[i].move(turning, v)
+		heading = atan(dy/dx)
+		#heading = heading % 2*pi
+		#print "Calculated heading is " + str(heading) + " last heading is " + str(lastHeading) + " dy = " + str(dy) + "   dx = " + str(dx)
 
+		if dx < 0 and dy > 0:
+			#print "updating heading from " + str(heading)
+			heading = 1.571 + abs( heading + 1.571)
+		elif dx < 0 and dy < 0:
+			#print "quadrant 3 heading from " + str(heading)
+			heading = pi + heading
+		elif dx > 0 and dy < 0:
+			#print "quadrant 4 update"
+			heading = 4.712 +  1.571 + heading
+			
+		print "HEADING " + str(heading)
+		turning = ( heading - lastHeading ) % (2 * pi)
+
+		print "Calculated turning is " + str(turning)  + " original = " + str(heading - lastHeading )
+		for i in range(N):
+			th = random.gauss(heading,measurement_noise)
+			newp.append(robot(p[i].sense()[0], p[i].sense()[1], th, 0))
+			#print "position " + str(p[i].sense()[0]) + ", " + str(p[i].sense()[1])
+			newp[i].set_noise(0.0, 0.0, 0.0)
+			newp[i].move(turning, v)
+
+		
 		
 	
 	#print "******"
-	minpoint = [0,0]
-	mindis = 100
+	#minpoint = [0,0]
+	#mindis = 100
 	closestIndex = -1
 	weightIndex = -1
 	maxWeight = 0
-	
+	#
 	wts = []
-	
-	w = []
-	# calculate weights based on the difference to the measurement
+
 	for i in range(N):
-		pos = p[i].sense()
-		tw = getWeight(distance_between(measurement, pos))
-	
+		pos = newp[i].sense()
+		#tw = abs(getWeight(distance_between(measurement, pos)))
+		dx = measurement[0] - pos[0]
+		dy = measurement[1] - pos[1]
+		tw =  ( 1/dx) * ( 1 / dy )
+		print "position " + str(pos[0]) + ", " + str(pos[1]) + " weight = " + str(tw)
+
 		wts.append(tw)
 		if tw > maxWeight:
-			print "better weight at point " + str(pos[0]) + ", " + str(pos[1]) + " weight = " + str(tw)
+			#print "better weight at point " + str(pos[0]) + ", " + str(pos[1]) + " weight = " + str(tw)
 			weightIndex = i
 			maxWeight = tw
 			minpoint = pos
 			
-	
-	# resample
-	print "Max w = " + str(max(wts))
-	
+	print "MAX WEIGHT IS " + str(maxWeight)
+	## resample
+	# print "Max w = " + str(max(wts))
+	#
 	p3 = []
-
+    #
+	index = int(random.random() * N)
+	beta = 0.0
+	mw = max(wts)
 	for i in range(N):
-		p3.append(better(wts, p, maxWeight))
-		
+		beta += random.random() * 2.0 * mw
+		while beta > wts[index]:
+			beta -= wts[index]
+			index = (index + 1) % N
+			
+		p3.append(newp[index])
 	
-	print "best point is " + str(minpoint[0]) + ", " + str(minpoint[1])
-	
-	#print " going to move with heading " + str(heading) + " and turning " + str(turning) + " by distance " + str(v)
-	nextRobot = p[weightIndex]
-
+	print "Resampled size is " + str(len(p3))
+	#
+	#p3.sort()
+    #
+	print "After moving, best point is " + str(minpoint[0]) + ", " + str(minpoint[1])
+	#
+	##print " going to move with heading " + str(heading) + " and turning " + str(turning) + " by distance " + str(v)
+	nextRobot = newp[weightIndex]
+    #
 	nextRobot.move(turning, v)
-	if distance_between(minpoint, nextRobot.sense()) > v + 1.5:
-		print "The moved distance was " + str(distance_between(minpoint, nextRobot.sense()))
-		print "Error"
-		return
-	
-	# You must return xy_estimate (x, y), and OTHER (even if it is None) 
-	# in this order for grading purposes.
+	#
+	#if distance_between(minpoint, nextRobot.sense()) > v + 1.5:
+	#	print "The moved distance was " + str(distance_between(minpoint, nextRobot.sense()))
+	#	print "Error"
+	#	return
+	#
+	## You must return xy_estimate (x, y), and OTHER (even if it is None) 
+	## in this order for grading purposes.
 	xy_estimate = nextRobot.sense()
+	p = newp
+	#xy_estimate = [0,0]
 	print "Predict " + str(xy_estimate[0]) + ", " + str(xy_estimate[1])
-	p = p3
 	OTHER = [measurement, heading,  p]
 	print "************"
 
@@ -228,6 +270,7 @@ def naive_next_pos(measurement, OTHER = None):
 # How the robot class behaves.
 test_target = robot(2.1, 4.3, 0.5, 2*pi / 34.0, 1.5)
 measurement_noise = 0.05 * test_target.distance
+print "measurement noise is " + str(measurement_noise)
 test_target.set_noise(0.0, 0.0, measurement_noise)
 
 #demo_grading(naive_next_pos, test_target)
