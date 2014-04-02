@@ -22,6 +22,9 @@ class robot:
         self.distance_noise    = 0.0
         self.measurement_noise = 0.0
 
+	def getPos():
+		return self.heading
+		
 	def getHeading():
 		return self.heading
 		
@@ -31,7 +34,6 @@ class robot:
         self.turning_noise    = float(new_t_noise)
         self.distance_noise    = float(new_d_noise)
         self.measurement_noise = float(new_m_noise)
-
 
     def move(self, turning, distance, tolerance = 0.001, max_turning_angle = pi):
         """This function turns the robot and then moves it forward."""
@@ -47,7 +49,10 @@ class robot:
 
         # Execute motion
         self.heading += turning
+        #print "heading is " + str(self.heading)
         self.heading = angle_trunc(self.heading)
+        #print "Truncated heading is " + str(self.heading)
+        #print "**********"
         self.x += distance * cos(self.heading)
         self.y += distance * sin(self.heading)
 

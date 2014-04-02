@@ -68,7 +68,24 @@ def better(thelist, samples, wmax):
             newp.append(samples[thisIndex])
             return samples[thisIndex]
 			
-			
+def calculateHeading(dx, dy):
+	heading = atan(dy/dx)
+
+	if dx < 0 and dy > 0:
+		#print "updating heading from " + str(heading)
+		heading = 1.571 + abs( heading + 1.571)
+	elif dx < 0 and dy < 0:
+		#print "quadrant 3 heading from " + str(heading)
+		heading = pi + heading
+	elif dx > 0 and dy < 0:
+		#print "quadrant 4 update"
+		heading = 4.712 +  1.571 + heading
+	
+	return heading
+
+def estimate_next_pos_test(measurement, OTHER = None):
+	return [0,0] , OTHER
+	
 def estimate_next_pos(measurement, OTHER = None):
 
 	p = []
@@ -77,119 +94,120 @@ def estimate_next_pos(measurement, OTHER = None):
 	heading = 0
 	v = 0
 	turning = random.gauss(0,2*pi)
-	N = 100
+	N = 2000
 	worldsize = 10
 	lastPosition = [0,0]
 	lastHeading = 0
 	initialized = False
-
 	newp = []
-
-			
-	if OTHER == None:
+	counter = 0
+	turning = 0
+	turns = []
+	distances = []
 	
+	#lastPosition, lastHeading, p, counter = "", "", ""
+	if OTHER != None:
+		lastPosition, lastHeading, p, counter, turns, distances = OTHER
+		
+	if OTHER == None or counter < 4:
+		counter +=1
 		maxWeight = -1
 		wIndex = -1
 		# do initial position
+		
+		
+		if counter > 1:
+			dy = measurement[1] - lastPosition[1]
+			dx = measurement[0] - lastPosition[0]
+			heading = calculateHeading(dx, dy)
+			heading = angle_trunc(heading)
+			turning = heading - lastHeading
+			v = distance_between(lastPosition, measurement)
+
+			print "First turning is " + str(turning)
+			print "First v is " + str(v)
+			
+		# get random positions
+		p = []
 		for i in range(N):
 			rHeading = random.gauss(0,2*pi)
 			rTurning = random.gauss(0,2*pi)
-			myRobot = robot(random.gauss(measurement[0],measurement_noise), random.gauss(measurement[1],measurement_noise), random.gauss(0,2*pi), random.gauss(0,2*pi), random.randint(1,5))
+			rx = random.gauss(measurement[0], measurement_noise)
+			ry = random.gauss(measurement[1], measurement_noise)
+			myRobot = robot(rx , ry,  random.gauss(heading,measurement_noise * 2*pi), random.gauss(0,2*pi), random.randint(1,5))
 			myRobot.set_noise(0.0, 0.0, 0.0)
-			turning = random.gauss(0, 2*pi)
 			p.append(myRobot)
 		
 		
 		closestPoint = 100
-		closestIndex = -1
-		
-		# get closest point and use as the first prediction
-		for i in range(len(p)):
-			pos = p[i].sense()
-			d1 = distance_between(measurement, pos)
-			if d1 < closestPoint:
-				closestPoint = d1
-				closestIndex = -1
-				
-		closestPos = p[closestIndex].sense()
-		
-		OTHER = [measurement, heading,  p]
-		fpos = closestPos
-		print "First measurement " + str(measurement[0]) + ", " + str(measurement[1])
-		print "First guess is " + str(fpos[0]) + ", " + str(fpos[1])
-		print "*******************************************************"
+		closestIndex = 0
 
+		for i in range(N):
+			p[i].move(turning, v)
+			
+		closestPos = p[closestIndex].sense()
+		OTHER = [measurement, heading,  p, counter, turns, distances]
+		fpos = closestPos
 		return closestPos, OTHER
 		
 	else:
-	
+		#print "**********************"
 		initialized = True
-		lastPosition, lastHeading, p = OTHER
+		lastPosition, lastHeading, p, counter, turns, distances = OTHER
 		print "MEAS: " + str(lastPosition[0]) + ", " + str(lastPosition[1]) + "  this measurement " + str(measurement[0]) + ", "  + str(measurement[1])
+		
 		v = distance_between(lastPosition, measurement)
+		
+		distances.append(v)
+		averageV = sum(distances)/len(distances)
+		
+		print " v is " + str(v) + " avg v is " + str(sum(distances)/len(distances))
 		dy = measurement[1] - lastPosition[1]
 		dx = measurement[0] - lastPosition[0]
-		heading = atan(dy/dx)
-		#heading = heading % 2*pi
-		#print "Calculated heading is " + str(heading) + " last heading is " + str(lastHeading) + " dy = " + str(dy) + "   dx = " + str(dx)
-
-		if dx < 0 and dy > 0:
-			#print "updating heading from " + str(heading)
-			heading = 1.571 + abs( heading + 1.571)
-		elif dx < 0 and dy < 0:
-			#print "quadrant 3 heading from " + str(heading)
-			heading = pi + heading
-		elif dx > 0 and dy < 0:
-			#print "quadrant 4 update"
-			heading = 4.712 +  1.571 + heading
+		heading = calculateHeading(dx, dy)
 			
-		print "HEADING " + str(heading)
+		print "HEADING " + str(heading) + " or truncated of " + str(heading)
 		turning = ( heading - lastHeading ) % (2 * pi)
-
-		print "Calculated turning is " + str(turning)  + " original = " + str(heading - lastHeading )
-		for i in range(N):
-			th = random.gauss(heading,measurement_noise)
-			newp.append(robot(p[i].sense()[0], p[i].sense()[1], th, 0))
-			#print "position " + str(p[i].sense()[0]) + ", " + str(p[i].sense()[1])
-			newp[i].set_noise(0.0, 0.0, 0.0)
-			newp[i].move(turning, v)
+		turns.append(turning)
+		print "turn size is " + str(len(turns))
+		avgturn = sum(turns)/ len(turns)
+		
+		newp = p
+		
+		#for i in range(N):
+		#	p[i].move(avgturn, averageV)
 
 		
-		
-	
-	#print "******"
-	#minpoint = [0,0]
-	#mindis = 100
 	closestIndex = -1
 	weightIndex = -1
 	maxWeight = 0
-	#
+
+	# wts is new weights
 	wts = []
 
 	for i in range(N):
 		pos = newp[i].sense()
-		#tw = abs(getWeight(distance_between(measurement, pos)))
-		dx = measurement[0] - pos[0]
-		dy = measurement[1] - pos[1]
-		tw =  ( 1/dx) * ( 1 / dy )
-		print "position " + str(pos[0]) + ", " + str(pos[1]) + " weight = " + str(tw)
+		dx = pos[0] - measurement[0]
+		dy = pos[1] - measurement[1]
+		diffAngle = calculateHeading(dx, dy)
+		
+		tw =  abs(( 1/dx) * ( 1 / dy ) * (1 / ( heading - diffAngle)))
 
 		wts.append(tw)
 		if tw > maxWeight:
-			#print "better weight at point " + str(pos[0]) + ", " + str(pos[1]) + " weight = " + str(tw)
 			weightIndex = i
 			maxWeight = tw
 			minpoint = pos
 			
-	print "MAX WEIGHT IS " + str(maxWeight)
-	## resample
-	# print "Max w = " + str(max(wts))
-	#
+	#print "Best point to move is " + str(minpoint[0]) + ", " + str(minpoint[1])
+	
 	p3 = []
-    #
 	index = int(random.random() * N)
+	
 	beta = 0.0
+	
 	mw = max(wts)
+	
 	for i in range(N):
 		beta += random.random() * 2.0 * mw
 		while beta > wts[index]:
@@ -197,32 +215,29 @@ def estimate_next_pos(measurement, OTHER = None):
 			index = (index + 1) % N
 			
 		p3.append(newp[index])
-	
-	print "Resampled size is " + str(len(p3))
-	#
-	#p3.sort()
-    #
-	print "After moving, best point is " + str(minpoint[0]) + ", " + str(minpoint[1])
-	#
-	##print " going to move with heading " + str(heading) + " and turning " + str(turning) + " by distance " + str(v)
-	nextRobot = newp[weightIndex]
-    #
-	nextRobot.move(turning, v)
-	#
-	#if distance_between(minpoint, nextRobot.sense()) > v + 1.5:
-	#	print "The moved distance was " + str(distance_between(minpoint, nextRobot.sense()))
-	#	print "Error"
-	#	return
-	#
-	## You must return xy_estimate (x, y), and OTHER (even if it is None) 
-	## in this order for grading purposes.
-	xy_estimate = nextRobot.sense()
-	p = newp
-	#xy_estimate = [0,0]
-	print "Predict " + str(xy_estimate[0]) + ", " + str(xy_estimate[1])
-	OTHER = [measurement, heading,  p]
-	print "************"
 
+		
+  #print "after turning, the heading diff is  " + str(heading - thisHeading)
+	
+	for i in range(N):
+		p3[i].move(turning, v)
+	
+	x = 0.0
+	y = 0.0
+	for i in range(N):
+		x += p3[i].x
+		y += p3[i].y
+		
+	#print "total x is " + str(x/len(p))
+	#print "total y is " + str(y/len(p))
+	p = p3
+	
+	xy_estimate = [ x / len(p3) , y / len(p3)]
+	print "Predict " + str(xy_estimate[0]) + ", " + str(xy_estimate[1])
+	OTHER = [measurement, heading,  p, counter, turns, distances]
+
+	xy_estimate = [x/len(p), y/len(p)]
+ 
 	return xy_estimate, OTHER
 
 # A helper function you may find useful.
@@ -270,9 +285,9 @@ def naive_next_pos(measurement, OTHER = None):
 # How the robot class behaves.
 test_target = robot(2.1, 4.3, 0.5, 2*pi / 34.0, 1.5)
 measurement_noise = 0.05 * test_target.distance
-print "measurement noise is " + str(measurement_noise)
+# print "measurement noise is " + str(measurement_noise)
 test_target.set_noise(0.0, 0.0, measurement_noise)
-
+# test_target.set_noise(0.0, 0.0, 0.0)
 #demo_grading(naive_next_pos, test_target)
 demo_grading(estimate_next_pos, test_target)
 

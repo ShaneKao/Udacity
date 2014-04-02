@@ -15,9 +15,19 @@ print "Moving 1"
 myrobot.move(0,1)
 
 print myrobot.sense()
-
 myrobot.move(0,1)
 
 print "Moving again"
-
 print myrobot.sense()
+
+print "Sense test"
+angle = 0
+
+pritn "0 radians truncated"
+print angle_trunc(angle)
+
+print "adding pi/4 to it"
+angle += pi/4
+print angle_trunc(angle)
+
+
