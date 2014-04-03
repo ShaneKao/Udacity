@@ -72,8 +72,8 @@ def calculateHeading(dx, dy):
 	heading = atan(dy/dx)
 
 	if dx < 0 and dy > 0:
-		#print "updating heading from " + str(heading)
-		heading = 1.571 + abs( heading + 1.571)
+		#print "updating heading for quadrant 2 " + str(heading)
+		heading = pi/2 + ( pi/2 - abs(heading))
 	elif dx < 0 and dy < 0:
 		#print "quadrant 3 heading from " + str(heading)
 		heading = pi + heading
@@ -83,162 +83,72 @@ def calculateHeading(dx, dy):
 	
 	return heading
 
-def estimate_next_pos_test(measurement, OTHER = None):
-	return [0,0] , OTHER
+def update(mean1, var1, mean2, var2):
+	#print "var 1 = " + str(var1) + " var2 = " + str(var2)
+	new_mean = (var2 * mean1 + var1 * mean2) / (var1 + var2)
+	new_var = 1/(1/var1 + 1/var2)
+	return [new_mean, new_var]
+	return 0
 	
+def predict():
+	return [0, 0]
+	
+
 def estimate_next_pos(measurement, OTHER = None):
-
-	p = []
-	dx = 0
-	dy = 0
-	heading = 0
-	v = 0
-	turning = random.gauss(0,2*pi)
-	N = 100
-	worldsize = 10
-	lastPosition = [0,0]
-	lastHeading = 0
-	initialized = False
-	newp = []
+	mu = 0
+	sigma = measurement_noise
 	counter = 0
-	turning = 0
-	turns = []
-	distances = []
-	
-	#lastPosition, lastHeading, p, counter = "", "", ""
+	lastPosition = [0, 0]
+	tmu = 0
+	tsig = 0
+	lheading = 0
+	heading = 0
+	tsig = measurement_noise
+	tmu = 0
+	lastheading = 0
+	if OTHER == None:
+		mu = 10000
+		tmu = 10000
+		
 	if OTHER != None:
-		lastPosition, lastHeading, p, counter, turns, distances = OTHER
-		
-	if OTHER == None or counter < 4:
-		counter +=1
-		maxWeight = -1
-		wIndex = -1
-		# do initial position
-		
-		
-		if counter > 1:
-			dy = measurement[1] - lastPosition[1]
-			dx = measurement[0] - lastPosition[0]
-			heading = calculateHeading(dx, dy)
-			heading = angle_trunc(heading)
-			turning = heading - lastHeading
-			v = distance_between(lastPosition, measurement)
-
-			print "First turning is " + str(turning)
-			print "First v is " + str(v)
-			
-		# get random positions
-		p = []
-		for i in range(N):
-			rHeading = random.gauss(0,2*pi)
-			rTurning = random.gauss(0,2*pi)
-			rx = random.gauss(measurement[0], measurement_noise)
-			ry = random.gauss(measurement[1], measurement_noise)
-			myRobot = robot(rx , ry,  random.gauss(heading,measurement_noise * 2*pi), random.gauss(0,2*pi), random.randint(1,5))
-			myRobot.set_noise(0.0, 0.0, 0.0)
-			p.append(myRobot)
-		
-		
-		closestPoint = 100
-		closestIndex = 0
-
-		for i in range(N):
-			p[i].move(turning, v)
-			
-		closestPos = p[closestIndex].sense()
-		OTHER = [measurement, heading,  p, counter, turns, distances]
-		fpos = closestPos
-		return closestPos, OTHER
-		
-	else:
-		#print "**********************"
-		initialized = True
-		lastPosition, lastHeading, p, counter, turns, distances = OTHER
-		print "MEAS: " + str(lastPosition[0]) + ", " + str(lastPosition[1]) + "  this measurement " + str(measurement[0]) + ", "  + str(measurement[1])
-		print "*********************************************"
-		v = distance_between(lastPosition, measurement)
-		
-		distances.append(v)
-		averageV = sum(distances)/len(distances)
-		
-		#print " v is " + str(v) + " avg v is " + str(sum(distances)/len(distances))
-		dy = measurement[1] - lastPosition[1]
-		dx = measurement[0] - lastPosition[0]
-		heading = calculateHeading(dx, dy)
-			
-		#print "HEADING " + str(heading) + " or truncated of " + str(heading)
-		turning = ( heading - lastHeading ) % (2 * pi)
-		turns.append(turning)
-		print "turn size is " + str(len(turns))
-		avgturn = sum(turns)/ len(turns)
-		
-		newp = p
-		
-		#for i in range(N):
-		#	p[i].move(avgturn, averageV)
-
-		
-	closestIndex = -1
-	weightIndex = -1
-	maxWeight = 0
-
-	# wts is new weights
-	wts = []
-	p.sort()
-	for i in range(N):
-		pos = newp[i].sense()
-		dx = pos[0] - measurement[0]
-		dy = pos[1] - measurement[1]
-		diffAngle = calculateHeading(dx, dy)
-		
-		tw =  abs(( 1/dx) * ( 1 / dy ) * (1 / ( heading - diffAngle)))
-		print "Weighting " + str(pos[0]) + ", " + str(pos[1]) + " weight " + str(tw)
-		wts.append(tw)
-		if tw > maxWeight:
-			weightIndex = i
-			maxWeight = tw
-			minpoint = pos
-			
-	#print "Best point to move is " + str(minpoint[0]) + ", " + str(minpoint[1])
+		mu, sigma, lastheading, tmu, tsig, counter, lastPosition = OTHER
+	 
+	counter += 1
+	#print "Measure " + str(measurement[0]) + ", " + str(measurement[1])
+	#print "*************************" + str(counter)
+	#print "read mu of " + str(mu) + " and turning Mu of " + str(tmu)
+	db = distance_between(lastPosition, measurement)
+	#print "distance is " + str(db)
 	
-	p3 = []
-	index = int(random.random() * N)
+	dy = measurement[1] - lastPosition[1]
+	dx = measurement[0] - lastPosition[0]
+	#print " dx = " + str(dx) + " dy = " + str(dy)
+	thisheading = calculateHeading(dx, dy)
 	
-	beta = 0.0
+	#print "new heading is " + str(thisheading) + " last heading is " + str(lastheading)
+	turning = (thisheading - lastheading)  
+	if turning < 0:
+		turning = 0
 	
-	mw = max(wts)
+	turning = turning % (2 * pi)
+	#print "calc new turn of " + str(turning) + " for iteration " + str(counter)
 	
-	for i in range(N):
-		beta += random.random() * 2.0 * mw
-		while beta > wts[index]:
-			beta -= wts[index]
-			index = (index + 1) % N
-			
-		p3.append(newp[index])
-
-
-	for i in range(N):
-		p3[i].move(turning, v)
+	mu, sigma = update(mu, sigma, db, measurement_noise)
 	
-	x = 0.0
-	y = 0.0
-	for i in range(N):
-		x += p3[i].x
-		y += p3[i].y
-		
-	#print "total x is " + str(x/len(p))
-	#print "total y is " + str(y/len(p))
-	p = p3
-	p3.sort()
-	for i in range(N):
-		print "Sampled " + str(p3[i].sense()[0]) + ", " + str(p3[i].sense()[1])
 
-	xy_estimate = [ x / len(p3) , y / len(p3)]
-	print "Predict " + str(xy_estimate[0]) + ", " + str(xy_estimate[1])
-	OTHER = [measurement, heading,  p, counter, turns, distances]
+	
+	tmu, tsig = update(tmu, tsig, turning, measurement_noise)
+	#print "new mu is " + str(mu) + " turning mu is " + str(tmu)
+	
+	tRobot = robot(measurement[0], measurement[1], heading)
+	tRobot.set_noise(0.0, 0.0, measurement_noise)
+	tRobot.move(tmu, mu)
+	xy_estimate = tRobot.sense()
+	#print "Predict " + str(xy_estimate[0]) + ", " + str(xy_estimate[1])
+	
+	OTHER = [mu, sigma, thisheading, tmu, tsig, counter, measurement, ]
+	
 
-	xy_estimate = [x/len(p), y/len(p)]
- 
 	return xy_estimate, OTHER
 
 # A helper function you may find useful.
