@@ -144,7 +144,7 @@ def estimate_next_pos(measurement, OTHER = None):
 	lastheading = 0
     
  	if OTHER == None:
-		sigma = 1000
+		sigma = 10000
 		tsig = 10000
 		       
 	if OTHER != None:

@@ -60,6 +60,10 @@ def update(mean1, var1, mean2, var2):
 	new_mean = (var2 * mean1 + var1 * mean2) / (var1 + var2)
 	new_var = 1/(1/var1 + 1/var2)
 	return [new_mean, new_var]
+	
+def predict():
+	return 0
+	
 def getQuadrant(a):
 	if a >= 0 and a <= (pi/2):
 		#print "angle " + str(a) + " is less than " + str(pi/2)
@@ -95,6 +99,7 @@ def next_move(hunter_position, hunter_heading, target_measurement, max_distance,
 	mu, sigma = update(mu, sigma, distance_between(lastPosition, target_measurement), measurement_noise)
 	moved = distance_between(lastPosition, target_measurement)
 	#print "Mesurement is " + str(target_measurement[0]) + ", " + str(target_measurement[1])
+	#print "**************************"
 	#print "Distance is " + str(distance_between(hunter_position, target_measurement)) + " after moving " + str(moved)
 	dy = target_measurement[1] - lastPosition[1]
 	dx = target_measurement[0] - lastPosition[0]
@@ -113,23 +118,36 @@ def next_move(hunter_position, hunter_heading, target_measurement, max_distance,
 		turning = thisheading + ( 2*pi - abs(lastHeading))
 
 	tmu, tsigma = update(tmu, tsigma, turning, measurement_noise)
-	
+	#print "tmu is " + str(tmu)
 	#print "Distance mu = " + str(mu) + "  turn mu = " + str(tmu)
-	
-	targetRobot = robot(target_measurement[0], target_measurement[1], thisheading)
-	#tRobot.set_noise(0.0, 0.0, measurement_noise)
+	#print "Target heading is " + str(target.heading) + " calc heading is " + str(thisheading) 
+	targetRobot = robot(target_measurement[0], target_measurement[1], angle_trunc(thisheading))
+	targetRobot.set_noise(0.0, 0.0, measurement_noise)
 	targetRobot.move(tmu, mu)
-	print "Chase Robot is at " + str(hunter_position[0]) + ", " + str(hunter_position[1]) + " heading " + str(hunter_heading)
-	print "Target is at " + str(target_measurement[0]) + ", " + str(target_measurement[1])
-	print "*****"
-	print "Predict " + str(targetRobot.x) + ", " + str(targetRobot.y)
+	tsigma += measurement_noise
+	#print "Chase Robot is at " + str(hunter_position[0]) + ", " + str(hunter_position[1]) + " heading " + str(hunter_heading)
+	#print "Target is at " + str(target_measurement[0]) + ", " + str(target_measurement[1])
+	#print "Predict " + str(targetRobot.x) + ", " + str(targetRobot.y)
 
-	cX = targetRobot.x - hunter_position[0]
-	cY =  targetRobot.y - hunter_position[1]
 	
+	
+	#cX = targetRobot.x - hunter_position[0]
+	#cY =  targetRobot.y - hunter_position[1]
+    #
+	##targetTruncHeading = angle_trunc(
 	headingNeeded = calculateHeading(targetRobot.x - hunter_position[0], targetRobot.y - hunter_position[1])
-	#print "need to head " + str(headingNeeded)
+	headingNeededTrunc = angle_trunc(headingNeeded)
+	#print "My calc heading is  " + str(headingNeeded) + " truncated = " + str(headingNeededTrunc)
+
+	# test
+	#headingNeededTrunc = get_heading(hunter_position, target_measurement)
+	
+	turn2 = headingNeededTrunc - hunter_heading
+	#print "diff is " + str(turn2)
+	#print "Canned heading is " + str(get_heading(hunter_position, target_measurement))
+	
 	#print "Chase Difference = " + str(cX) + ", " + str(cY)
+	#print "Truncated turn would be " + str(turn2)
 	chaseDistance = distance_between(hunter_position, target_measurement)
 	distance = 0
 	#print "Chase distance is " + str(chaseDistance)
@@ -137,9 +155,10 @@ def next_move(hunter_position, hunter_heading, target_measurement, max_distance,
 		distance = max_distance
 	else:
 		distance = chaseDistance
-		
-	turning = headingNeeded - hunter_heading
-	print "Using turn " + str(turning) + " and distance = " + str(distance)
+	
+	distance = max_distance
+	turning = turn2
+	#print "Using turn " + str(turning) + " and distance = " + str(distance)
 
 	OTHER = [target_measurement, thisheading,  mu, sigma, tmu, tsigma]
 	return turning, distance, OTHER
