@@ -151,42 +151,31 @@ def estimate_next_pos(measurement, OTHER = None):
 		mu, sigma, lastheading, tmu, tsig, counter, lastPosition = OTHER
 	 
 	counter += 1
-	#print "Measure " + str(measurement[0]) + ", " + str(measurement[1])
-	#print "*************************" + str(counter)
-	#print "read mu of " + str(mu) + " and turning Mu of " + str(tmu)
 	db = distance_between(lastPosition, measurement)
-	#print "distance is " + str(db)
 	
 	dy = measurement[1] - lastPosition[1]
 	dx = measurement[0] - lastPosition[0]
-	#print " dx = " + str(dx) + " dy = " + str(dy)
 	thisheading = calculateHeading(dx, dy)
 	
-	#print "new heading is " + str(thisheading) + " last heading is " + str(lastheading)
 	turning = (thisheading - lastheading)  
 	if turning < 0:
 		turning = lastheading - thisheading
 	
-	#print "Q: " + str(getQuadrant(thisheading))
 	
 	if getQuadrant(lastheading) == 4 and getQuadrant(thisheading) == 1:
 		turning = thisheading + ( pi*2 - abs(lastheading))
-		#print "changed turning heading to be " + str(turning)
 	
 	turning = turning % (2 * pi)
-	#print "calc new turn of " + str(turning) + " for iteration " + str(counter)
 	
 	
 
 	mu, sigma = update(mu, sigma, db, measurement_noise)
 	tmu, tsig = update(tmu, tsig, turning, measurement_noise)
-	#print "new mu is " + str(mu) + " turning mu is " + str(tmu)
 	
 	tRobot = robot(measurement[0], measurement[1], heading)
 	#tRobot.set_noise(0.0, 0.0, measurement_noise)
 	tRobot.move(tmu, mu)
 	xy_estimate = tRobot.sense()
-	#print "Predict " + str(xy_estimate[0]) + ", " + str(xy_estimate[1])
 	
 	OTHER = [mu, sigma, thisheading, tmu, tsig, counter, measurement ]
 	

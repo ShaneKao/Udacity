@@ -74,10 +74,8 @@ def getQuadrant(a):
 		return 3
 	else:
 		return 4
-		
-
-def next_move(hunter_position, hunter_heading, target_measurement, max_distance, OTHER = None):
-	# This function will be called after each time the target moves. 
+def next_move(hunter_position, hunter_heading, target_measurement, max_distance, OTHER = None):		
+# This function will be called after each time the target moves. 
 	#print "target turn is " + str(target.turning)
 	# The OTHER variable is a place for you to store any historical information about
 	# the progress of the hunt (or maybe some localization information). Your return format
@@ -93,9 +91,12 @@ def next_move(hunter_position, hunter_heading, target_measurement, max_distance,
 	lastPosition = target_measurement
 	lastHeading = 0
 	thisheading = 0
+	counter = 0
 	if OTHER != None:
-		lastPosition, lastHeading, mu, sigma, tmu, tsigma = OTHER
+		lastPosition, lastHeading, mu, sigma, tmu, tsigma, counter = OTHER
 	
+	counter += 1
+	#print "read tmu = " + str(tmu) + " mu=" + str(mu) + " sigma = " + str(sigma)
 	mu, sigma = update(mu, sigma, distance_between(lastPosition, target_measurement), measurement_noise)
 	moved = distance_between(lastPosition, target_measurement)
 	#print "Mesurement is " + str(target_measurement[0]) + ", " + str(target_measurement[1])
@@ -108,65 +109,82 @@ def next_move(hunter_position, hunter_heading, target_measurement, max_distance,
 		heading = 0
 	else:
 		thisheading = calculateHeading(dx, dy)
+		thisheading = get_heading( lastPosition, target_measurement)
+	
 	
 	turning = thisheading - lastHeading
 	
-	if turning < 0:
-		turning = lastHeading - thisheading
-	
 	if lastHeading > 0 and thisheading < 0:
-		turning = (pi - abs(thisheading)) + (pi - lastheading )
+		turning = (pi - abs(thisheading)) + (pi - lastHeading )
 	
 	if lastHeading < 0 and thisheading > 0:
 		turning = thisheading + abs(lastHeading)
-		
-	if getQuadrant(lastHeading) == 4 and getQuadrant(thisheading) == 1:
-		turning = thisheading + ( 2*pi - abs(lastHeading))
 
 	tmu, tsigma = update(tmu, tsigma, turning, measurement_noise)
-	#print "tmu is " + str(tmu)
-	#print "Distance mu = " + str(mu) + "  turn mu = " + str(tmu)
-	#print "Target heading is " + str(target.heading) + " calc heading is " + str(thisheading) 
-	targetRobot = robot(target_measurement[0], target_measurement[1], angle_trunc(thisheading))
-	targetRobot.set_noise(0.0, 0.0, measurement_noise)
-	targetRobot.move(tmu, mu)
-	tsigma += measurement_noise
-	#print "Chase Robot is at " + str(hunter_position[0]) + ", " + str(hunter_position[1]) + " heading " + str(hunter_heading)
-	#print "Target is at " + str(target_measurement[0]) + ", " + str(target_measurement[1])
-	#print "Predict " + str(targetRobot.x) + ", " + str(targetRobot.y)
+	
+	
+	#print "need to head " + str(headingNeeded)
+	#print "need to head " + str(headingNeeded)
 
 	
 	
-	#cX = targetRobot.x - hunter_position[0]
-	#cY =  targetRobot.y - hunter_position[1]
-    #
-	##targetTruncHeading = angle_trunc(
-	headingNeeded = calculateHeading(targetRobot.x - hunter_position[0], targetRobot.y - hunter_position[1])
-	headingNeededTrunc = angle_trunc(headingNeeded)
-	#print "My calc heading is  " + str(headingNeeded) + " truncated = " + str(headingNeededTrunc)
+	tempRobot = robot(target_measurement[0], target_measurement[1], thisheading)
+	tempRobot.move(tmu, mu)
+	dtt = distance_between(hunter_position, tempRobot.sense())
+	#print "Dtt is " + str(dtt)
+	#print "Looping with tmu " + str(tmu)
+	
+	bestpoint = tempRobot.sense()
+	
+	#
+	for i in range(30):
+		tempRobot.move(tmu, mu)
+		thisdtt = distance_between(hunter_position, tempRobot.sense())
+		if thisdtt < dtt:
+			dtt = thisdtt
+			bestpoint = tempRobot.sense()
+			#print "found a better dtt with " + str(thisdtt)
+			#print "at point " + str(bestpoint)
+    
 
-	# test
-	#headingNeededTrunc = get_heading(hunter_position, target_measurement)
+	#tempRobot.set_noise(0.0, 0.0, measurement_noise)
+	#sigma += measurement_noise
+	#tsigma += measurement_noise
 	
-	turn2 = headingNeededTrunc - hunter_heading
-	#print "diff is " + str(turn2)
-	#print "Canned heading is " + str(get_heading(hunter_position, target_measurement))
+	headingNeeded = get_heading(hunter_position, bestpoint)
+	turn2 = headingNeeded - hunter_heading
 	
+
+	# print "Chase Robot is at " + str(hunter_position[0]) + ", " + str(hunter_position[1]) + " heading " + str(hunter_heading)
+	# print "Target is at " + str(target_measurement[0]) + ", " + str(target_measurement[1]) + " calc heading  " + str(thisheading)
+	# print "Predict " + str(bestpoint[0]) + ", " + str(bestpoint[1])
+	# print "Chase should head " + str(headingNeeded)
+	# print "Chase robot is " + str(dtt) + " away from prediction"
+	# print "****"
+
+	#print "Distance to prediction " + str(dtt)
 	#print "Chase Difference = " + str(cX) + ", " + str(cY)
 	#print "Truncated turn would be " + str(turn2)
 	chaseDistance = distance_between(hunter_position, target_measurement)
 	distance = 0
 	#print "Chase distance is " + str(chaseDistance)
-	if chaseDistance >= max_distance:
+	if dtt >= max_distance:
 		distance = max_distance
 	else:
-		distance = chaseDistance
+		distance = dtt
 	
-	distance = max_distance
+	#distance = max_distance
 	turning = turn2
+	
+	if hunter_heading > 0 and headingNeeded < 0:
+		turning = (pi - abs(headingNeeded)) + (pi - hunter_heading )
+	
+	if hunter_heading < 0 and headingNeeded > 0:
+		turning = headingNeeded + abs(hunter_heading)
+		
 	#print "Using turn " + str(turning) + " and distance = " + str(distance)
 
-	OTHER = [target_measurement, thisheading,  mu, sigma, tmu, tsigma]
+	OTHER = [target_measurement, thisheading,  mu, sigma, tmu, tsigma, counter]
 	return turning, distance, OTHER
 
 def distance_between(point1, point2):
@@ -179,11 +197,11 @@ def demo_grading(hunter_bot, target_bot, next_move_fcn, OTHER = None):
     """Returns True if your next_move_fcn successfully guides the hunter_bot
     to the target_bot. This function is here to help you understand how we 
     will grade your submission."""
-    max_distance = 1.94 * target_bot.distance # 1.94 is an example. It will change.
+    max_distance = 0.98 * target_bot.distance # 1.94 is an example. It will change.
     separation_tolerance = 0.02 * target_bot.distance # hunter must be within 0.02 step size to catch target
     caught = False
     ctr = 0
-    print "separation tolerance is " + str(separation_tolerance)
+
     # We will use your next_move_fcn until we catch the target or time expires.
     while not caught and ctr < 1000:
 
@@ -191,6 +209,50 @@ def demo_grading(hunter_bot, target_bot, next_move_fcn, OTHER = None):
         hunter_position = (hunter_bot.x, hunter_bot.y)
         target_position = (target_bot.x, target_bot.y)
         separation = distance_between(hunter_position, target_position)
+        print "separation is " + str(separation)
+        if separation < separation_tolerance:
+            print "You got it right! It took you ", ctr, " steps to catch the target."
+            caught = True
+
+        # The target broadcasts its noisy measurement
+        target_measurement = target_bot.sense()
+
+        # This is where YOUR function will be called.
+        turning, distance, OTHER = next_move_fcn(hunter_position, hunter_bot.heading, target_measurement, max_distance, OTHER)
+        
+        # Don't try to move faster than allowed!
+        if distance > max_distance:
+            distance = max_distance
+
+        # We move the hunter according to your instructions
+        hunter_bot.move(turning, distance)
+
+        # The target continues its (nearly) circular motion.
+        target_bot.move_in_circle()
+
+        ctr += 1            
+        if ctr >= 1000:
+            print "It took too many steps to catch the target."
+    return caught
+
+
+def demo_grading2(hunter_bot, target_bot, next_move_fcn, OTHER = None):
+    """Returns True if your next_move_fcn successfully guides the hunter_bot
+    to the target_bot. This function is here to help you understand how we 
+    will grade your submission."""
+    max_distance = 1.94 * target_bot.distance # 1.94 is an example. It will change.
+    separation_tolerance = 0.02 * target_bot.distance # hunter must be within 0.02 step size to catch target
+    caught = False
+    ctr = 0
+    print "tolerance is " + str(separation_tolerance)
+    # We will use your next_move_fcn until we catch the target or time expires.
+    while not caught and ctr < 1000:
+
+        # Check to see if the hunter has caught the target.
+        hunter_position = (hunter_bot.x, hunter_bot.y)
+        target_position = (target_bot.x, target_bot.y)
+        separation = distance_between(hunter_position, target_position)
+        #print "Separation is " + str(separation)
         if separation < separation_tolerance:
             print "You got it right! It took you ", ctr, " steps to catch the target."
             caught = True
@@ -258,7 +320,7 @@ target.set_noise(0.0, 0.0, measurement_noise)
 
 hunter = robot(-10.0, -10.0, 0.0)
 
-#demo_grading(hunter, target, naive_next_move)
+# print demo_grading(hunter, target, naive_next_move)
 demo_grading(hunter, target, next_move)
 
 
