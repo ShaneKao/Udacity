@@ -88,6 +88,42 @@ def update(mean1, var1, mean2, var2):
 	new_mean = (var2 * mean1 + var1 * mean2) / (var1 + var2)
 	new_var = 1/(1/var1 + 1/var2)
 	return [new_mean, new_var]
+	
+def predict():
+	return [0, 0]
+
+def getQuadrant(a):
+	if a >= 0 and a <= (pi/2):
+		#print "angle " + str(a) + " is less than " + str(pi/2)
+		return 1
+	elif a > pi/2 and a <= pi:
+		return 2
+	elif a > pi and a <= 3*pi/2:
+		return 3
+	else:
+		return 4
+		
+
+def calculateHeading(dx, dy):
+	heading = atan(dy/dx)
+
+	if dx < 0 and dy > 0:
+		#print "updating heading for quadrant 2 " + str(heading)
+		heading = pi/2 + ( pi/2 - abs(heading))
+	elif dx < 0 and dy < 0:
+		#print "quadrant 3 heading from " + str(heading)
+		heading = pi + heading
+	elif dx > 0 and dy < 0:
+		#print "quadrant 4 update"
+		heading = 4.712 +  1.571 + heading
+	
+	return heading
+
+def update(mean1, var1, mean2, var2):
+	#print "var 1 = " + str(var1) + " var2 = " + str(var2)
+	new_mean = (var2 * mean1 + var1 * mean2) / (var1 + var2)
+	new_var = 1/(1/var1 + 1/var2)
+	return [new_mean, new_var]
 	return 0
 	
 def predict():
@@ -96,20 +132,21 @@ def predict():
 
 def estimate_next_pos(measurement, OTHER = None):
 	mu = 0
-	sigma = measurement_noise
+	sigma = 0
 	counter = 0
 	lastPosition = [0, 0]
 	tmu = 0
 	tsig = 0
 	lheading = 0
 	heading = 0
-	tsig = measurement_noise
+	tsig = 0
 	tmu = 0
 	lastheading = 0
-	if OTHER == None:
-		mu = 10000
-		tmu = 10000
-		
+    
+ 	if OTHER == None:
+		sigma = 1000
+		tsig = 10000
+		       
 	if OTHER != None:
 		mu, sigma, lastheading, tmu, tsig, counter, lastPosition = OTHER
 	 
@@ -128,29 +165,34 @@ def estimate_next_pos(measurement, OTHER = None):
 	#print "new heading is " + str(thisheading) + " last heading is " + str(lastheading)
 	turning = (thisheading - lastheading)  
 	if turning < 0:
-		turning = 0
+		turning = lastheading - thisheading
+	
+	#print "Q: " + str(getQuadrant(thisheading))
+	
+	if getQuadrant(lastheading) == 4 and getQuadrant(thisheading) == 1:
+		turning = thisheading + ( pi*2 - abs(lastheading))
+		#print "changed turning heading to be " + str(turning)
 	
 	turning = turning % (2 * pi)
 	#print "calc new turn of " + str(turning) + " for iteration " + str(counter)
 	
-	mu, sigma = update(mu, sigma, db, measurement_noise)
 	
 
-	
+	mu, sigma = update(mu, sigma, db, measurement_noise)
 	tmu, tsig = update(tmu, tsig, turning, measurement_noise)
 	#print "new mu is " + str(mu) + " turning mu is " + str(tmu)
 	
 	tRobot = robot(measurement[0], measurement[1], heading)
-	tRobot.set_noise(0.0, 0.0, measurement_noise)
+	#tRobot.set_noise(0.0, 0.0, measurement_noise)
 	tRobot.move(tmu, mu)
 	xy_estimate = tRobot.sense()
 	#print "Predict " + str(xy_estimate[0]) + ", " + str(xy_estimate[1])
 	
-	OTHER = [mu, sigma, thisheading, tmu, tsig, counter, measurement, ]
+	OTHER = [mu, sigma, thisheading, tmu, tsig, counter, measurement ]
 	
 
 	return xy_estimate, OTHER
-
+	
 # A helper function you may find useful.
 def distance_between(point1, point2):
     """Computes distance between point1 and point2. Points are (x, y) pairs."""

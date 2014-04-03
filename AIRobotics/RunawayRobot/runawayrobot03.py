@@ -40,13 +40,109 @@ from math import *
 from matrix import *
 import random
 
-def next_move(hunter_position, hunter_heading, target_measurement, max_distance, OTHER = None):
-    # This function will be called after each time the target moves. 
+def calculateHeading(dx, dy):
+	heading = atan(dy/dx)
 
-    # The OTHER variable is a place for you to store any historical information about
-    # the progress of the hunt (or maybe some localization information). Your return format
-    # must be as follows in order to be graded properly.
-    return turning, distance, OTHER
+	if dx < 0 and dy > 0:
+		#print "updating heading for quadrant 2 " + str(heading)
+		heading = pi/2 + ( pi/2 - abs(heading))
+	elif dx < 0 and dy < 0:
+		#print "quadrant 3 heading from " + str(heading)
+		heading = pi + heading
+	elif dx > 0 and dy < 0:
+		#print "quadrant 4 update"
+		heading = 4.712 +  1.571 + heading
+	
+	return heading
+
+def update(mean1, var1, mean2, var2):
+	#print "var 1 = " + str(var1) + " var2 = " + str(var2)
+	new_mean = (var2 * mean1 + var1 * mean2) / (var1 + var2)
+	new_var = 1/(1/var1 + 1/var2)
+	return [new_mean, new_var]
+def getQuadrant(a):
+	if a >= 0 and a <= (pi/2):
+		#print "angle " + str(a) + " is less than " + str(pi/2)
+		return 1
+	elif a > pi/2 and a <= pi:
+		return 2
+	elif a > pi and a <= 3*pi/2:
+		return 3
+	else:
+		return 4
+		
+
+def next_move(hunter_position, hunter_heading, target_measurement, max_distance, OTHER = None):
+	# This function will be called after each time the target moves. 
+	#print "target turn is " + str(target.turning)
+	# The OTHER variable is a place for you to store any historical information about
+	# the progress of the hunt (or maybe some localization information). Your return format
+	# must be as follows in order to be graded properly.
+	#print target_measurement
+	#print "turn"
+	#print target.turning
+	mu = 0
+	sigma = 10000
+	
+	tmu = 0
+	tsigma = 10000
+	lastPosition = target_measurement
+	lastHeading = 0
+	thisheading = 0
+	if OTHER != None:
+		lastPosition, lastHeading, mu, sigma, tmu, tsigma = OTHER
+	
+	mu, sigma = update(mu, sigma, distance_between(lastPosition, target_measurement), measurement_noise)
+	moved = distance_between(lastPosition, target_measurement)
+	#print "Mesurement is " + str(target_measurement[0]) + ", " + str(target_measurement[1])
+	#print "Distance is " + str(distance_between(hunter_position, target_measurement)) + " after moving " + str(moved)
+	dy = target_measurement[1] - lastPosition[1]
+	dx = target_measurement[0] - lastPosition[0]
+	
+	if dx == 0 and dy == 0:
+		heading = 0
+	else:
+		thisheading = calculateHeading(dx, dy)
+	
+	turning = thisheading - lastHeading
+	
+	if turning < 0:
+		turning = lastHeading - thisheading
+	
+	if getQuadrant(lastHeading) == 4 and getQuadrant(thisheading) == 1:
+		turning = thisheading + ( 2*pi - abs(lastHeading))
+
+	tmu, tsigma = update(tmu, tsigma, turning, measurement_noise)
+	
+	#print "Distance mu = " + str(mu) + "  turn mu = " + str(tmu)
+	
+	targetRobot = robot(target_measurement[0], target_measurement[1], thisheading)
+	#tRobot.set_noise(0.0, 0.0, measurement_noise)
+	targetRobot.move(tmu, mu)
+	print "Chase Robot is at " + str(hunter_position[0]) + ", " + str(hunter_position[1]) + " heading " + str(hunter_heading)
+	print "Target is at " + str(target_measurement[0]) + ", " + str(target_measurement[1])
+	print "*****"
+	print "Predict " + str(targetRobot.x) + ", " + str(targetRobot.y)
+
+	cX = targetRobot.x - hunter_position[0]
+	cY =  targetRobot.y - hunter_position[1]
+	
+	headingNeeded = calculateHeading(targetRobot.x - hunter_position[0], targetRobot.y - hunter_position[1])
+	#print "need to head " + str(headingNeeded)
+	#print "Chase Difference = " + str(cX) + ", " + str(cY)
+	chaseDistance = distance_between(hunter_position, target_measurement)
+	distance = 0
+	#print "Chase distance is " + str(chaseDistance)
+	if chaseDistance >= max_distance:
+		distance = max_distance
+	else:
+		distance = chaseDistance
+		
+	turning = headingNeeded - hunter_heading
+	print "Using turn " + str(turning) + " and distance = " + str(distance)
+
+	OTHER = [target_measurement, thisheading,  mu, sigma, tmu, tsigma]
+	return turning, distance, OTHER
 
 def distance_between(point1, point2):
     """Computes distance between point1 and point2. Points are (x, y) pairs."""
@@ -131,13 +227,14 @@ def naive_next_move(hunter_position, hunter_heading, target_measurement, max_dis
     distance = max_distance # full speed ahead!
     return turning, distance, OTHER
 
-# target = robot(0.0, 10.0, 0.0, 2*pi / 30, 1.5)
-# measurement_noise = .05*target.distance
-# target.set_noise(0.0, 0.0, measurement_noise)
+target = robot(0.0, 10.0, 0.0, 2*pi / 30, 1.5)
+measurement_noise = .05*target.distance
+target.set_noise(0.0, 0.0, measurement_noise)
 
-# hunter = robot(-10.0, -10.0, 0.0)
+hunter = robot(-10.0, -10.0, 0.0)
 
-# print demo_grading(hunter, target, naive_next_move)
+#demo_grading(hunter, target, naive_next_move)
+demo_grading(hunter, target, next_move)
 
 
 
